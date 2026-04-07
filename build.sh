@@ -70,11 +70,11 @@ build_projects='
 ./src/GaussDB.OpenTelemetry/GaussDB.OpenTelemetry.csproj|true|true
 ./example/GetStarted/GetStarted.csproj|true|true
 ./test/GaussDB.Benchmarks/GaussDB.Benchmarks.csproj|true|true
-./test/GaussDB.DependencyInjection.Tests/GaussDB.DependencyInjection.Tests.csproj|true|true
 ./test/GaussDB.NativeAotTests/GaussDB.NativeAotTests.csproj|true|true
-./test/GaussDB.PluginTests/GaussDB.PluginTests.csproj|true|true
 ./test/GaussDB.Specification.Tests/GaussDB.Specification.Tests.csproj|true|true
 ./test/GaussDB.Tests/GaussDB.Tests.csproj|true|true
+./test/GaussDB.DependencyInjection.Tests/GaussDB.DependencyInjection.Tests.csproj|true|true
+./test/GaussDB.PluginTests/GaussDB.PluginTests.csproj|true|true
 '
 
 test_projects='

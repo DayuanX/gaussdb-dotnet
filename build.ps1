@@ -58,11 +58,11 @@ $buildProjects = @(
     @{ Path = ".\src\GaussDB.OpenTelemetry\GaussDB.OpenTelemetry.csproj"; UseFramework = $true; NoDependencies = $true },
     @{ Path = ".\example\GetStarted\GetStarted.csproj"; UseFramework = $true; NoDependencies = $true },
     @{ Path = ".\test\GaussDB.Benchmarks\GaussDB.Benchmarks.csproj"; UseFramework = $true; NoDependencies = $true },
-    @{ Path = ".\test\GaussDB.DependencyInjection.Tests\GaussDB.DependencyInjection.Tests.csproj"; UseFramework = $true; NoDependencies = $true },
     @{ Path = ".\test\GaussDB.NativeAotTests\GaussDB.NativeAotTests.csproj"; UseFramework = $true; NoDependencies = $true },
-    @{ Path = ".\test\GaussDB.PluginTests\GaussDB.PluginTests.csproj"; UseFramework = $true; NoDependencies = $true },
     @{ Path = ".\test\GaussDB.Specification.Tests\GaussDB.Specification.Tests.csproj"; UseFramework = $true; NoDependencies = $true },
-    @{ Path = ".\test\GaussDB.Tests\GaussDB.Tests.csproj"; UseFramework = $true; NoDependencies = $true }
+    @{ Path = ".\test\GaussDB.Tests\GaussDB.Tests.csproj"; UseFramework = $true; NoDependencies = $true },
+    @{ Path = ".\test\GaussDB.DependencyInjection.Tests\GaussDB.DependencyInjection.Tests.csproj"; UseFramework = $true; NoDependencies = $true },
+    @{ Path = ".\test\GaussDB.PluginTests\GaussDB.PluginTests.csproj"; UseFramework = $true; NoDependencies = $true }
 )
 
 $testProjects = @(
