@@ -12,7 +12,7 @@
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/GaussDB/GaussDB.csproj" />
+    <ProjectReference Include="../../src/GaussDB/GaussDB.csproj" SkipGetTargetFrameworkProperties="true" />
     <TrimmerRootAssembly Include="../../src/GaussDB/GaussDB.csproj" Condition="'$(RootGaussDB)' == 'True'" />
   </ItemGroup>
   <ItemGroup>

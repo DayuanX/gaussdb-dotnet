@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\GaussDB\GaussDB.csproj" />
+        <ProjectReference Include="..\GaussDB\GaussDB.csproj" SkipGetTargetFrameworkProperties="true" />
     </ItemGroup>
     
     <ItemGroup>

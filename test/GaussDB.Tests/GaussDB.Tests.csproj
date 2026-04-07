@@ -14,7 +14,7 @@
     <Compile Remove="Replication/*.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/GaussDB/GaussDB.csproj" />
+    <ProjectReference Include="../../src/GaussDB/GaussDB.csproj" SkipGetTargetFrameworkProperties="true" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\.build\ca.crt">
