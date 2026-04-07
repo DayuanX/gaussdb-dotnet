@@ -84,7 +84,7 @@ jobs:
             fi
             sleep 1
           done
-          docker exec -i opengauss bash -lc "source /home/omm/.bashrc >/dev/null 2>&1; cat >/tmp/create_nossl_user.sql; gsql postgresql://gaussdb:Password%401234@localhost:5432/gaussdb_tests -f /tmp/create_nossl_user.sql" <<'SQL'
+          docker exec -i opengauss bash -lc 'export GAUSSHOME=/usr/local/opengauss; export PATH=$GAUSSHOME/bin:$PATH; export LD_LIBRARY_PATH=$GAUSSHOME/lib:$LD_LIBRARY_PATH; cat >/tmp/create_nossl_user.sql; $GAUSSHOME/bin/gsql postgresql://gaussdb:Password%401234@localhost:5432/gaussdb_tests -f /tmp/create_nossl_user.sql' <<'SQL'
           DO $$
           BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gaussdb_tests_nossl') THEN
