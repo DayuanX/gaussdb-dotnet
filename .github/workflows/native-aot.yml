@@ -90,7 +90,7 @@ jobs:
       matrix:
         os: [ ubuntu-24.04 ]
         pg_major: [ 15 ]
-        tfm: [ net9.0, net10.0 ]
+        tfm: [ net8.0, net9.0, net10.0 ]
 
     steps:
       - name: Checkout
@@ -111,6 +111,7 @@ jobs:
         uses: actions/setup-dotnet@v4.3.1
         with:
           dotnet-version: |
+            8.0.x
             9.0.x
             10.0.x
 
@@ -145,7 +146,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04]
         pg_major: [15]
-        tfm: [ net9.0, net10.0 ]
+        tfm: [ net8.0, net9.0, net10.0 ]
 
     steps:
       - name: Checkout
@@ -166,6 +167,7 @@ jobs:
         uses: actions/setup-dotnet@v4.3.1
         with:
           dotnet-version: |
+            8.0.x
             9.0.x
             10.0.x
 
