@@ -66,8 +66,8 @@ jobs:
           docker cp .build/server.crt opengauss:/var/lib/opengauss/data/server.crt
           docker cp .build/server.key opengauss:/var/lib/opengauss/data/server.key
           docker exec opengauss bash -c "chown omm:dbgrp /var/lib/opengauss/data/ca.crt /var/lib/opengauss/data/server.crt /var/lib/opengauss/data/server.key || true"
-          docker exec opengauss bash -c "chmod 644 /var/lib/opengauss/data/ca.crt"
-          docker exec opengauss bash -c "chmod 644 /var/lib/opengauss/data/server.crt"
+          docker exec opengauss bash -c "chmod 600 /var/lib/opengauss/data/ca.crt"
+          docker exec opengauss bash -c "chmod 600 /var/lib/opengauss/data/server.crt"
           docker exec opengauss bash -c "chmod 600 /var/lib/opengauss/data/server.key"
           docker exec opengauss bash -c "sed -i 's/^max_wal_senders\s*=\s*4/max_wal_senders = 80/' /var/lib/opengauss/data/postgresql.conf"
           docker exec opengauss bash -c "sed -i 's/^max_connections\s*=\s*200/max_connections = 500/' /var/lib/opengauss/data/postgresql.conf"
