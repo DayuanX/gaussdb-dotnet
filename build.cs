@@ -1,6 +1,7 @@
 var target = CommandLineParser.Val(args, "target", "Default");
 var apiKey = CommandLineParser.Val(args, "apiKey");
 var noPush = CommandLineParser.BooleanVal(args, "noPush");
+var framework = CommandLineParser.Val(args, "framework");
 var version = Environment.GetEnvironmentVariable("VERSION");
 var stable = CommandLineParser.BooleanVal(args, "stable") || !string.IsNullOrEmpty(version);
 var runningOnGithubActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
@@ -11,6 +12,7 @@ Arguments:
 target: {{target}}
 stable: {{stable}}
 noPush: {{noPush}}
+framework: {{framework}}
 args:
 {{args.StringJoin("\n")}}
 
@@ -22,8 +24,10 @@ string[] srcProjects = [
 ];
 string[] testProjects = [
     "./test/GaussDB.Tests/GaussDB.Tests.csproj",
-    "./test/GaussDB.GaussDB.DependencyInjection.Tests/GaussDB.GaussDB.DependencyInjection.Tests.csproj"
+    "./test/GaussDB.DependencyInjection.Tests/GaussDB.DependencyInjection.Tests.csproj"
 ];
+
+var frameworkArg = string.IsNullOrWhiteSpace(framework) ? "" : $" -f {framework}";
 
 await new BuildProcessBuilder()
     .WithSetup(() =>
@@ -37,7 +41,7 @@ await new BuildProcessBuilder()
     .WithTask("build", b =>
     {
         b.WithDescription("build")
-            .WithExecution(cancellationToken => ExecuteCommandAsync($"dotnet build {solutionPath}", cancellationToken))
+            .WithExecution(cancellationToken => ExecuteCommandAsync($"dotnet build {solutionPath}{frameworkArg}", cancellationToken))
             ;
     })
     .WithTask("test", b =>
@@ -51,7 +55,7 @@ await new BuildProcessBuilder()
                     var loggerOptions = runningOnGithubActions
                         ? "--logger GitHubActions"
                         : "--logger \"console;verbosity=d\"";
-                    var command = $"dotnet test --blame --collect:\"XPlat Code Coverage;Format=cobertura,opencover;ExcludeByAttribute=ExcludeFromCodeCoverage,Obsolete,GeneratedCode,CompilerGenerated\" {loggerOptions} -v=d {project}";
+                    var command = $"dotnet test --blame --collect:\"XPlat Code Coverage;Format=cobertura,opencover;ExcludeByAttribute=ExcludeFromCodeCoverage,Obsolete,GeneratedCode,CompilerGenerated\" {loggerOptions} -v=d{frameworkArg} {project}";
                     await ExecuteCommandAsync(command, cancellationToken);
                 }
             })

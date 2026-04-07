@@ -4,7 +4,7 @@
     <Description>NetTopologySuite plugin for GaussDB, allowing mapping of PostGIS geometry types to NetTopologySuite types.</Description>
     <PackageTags>$(PackageTags);postgis;spatial;nettopologysuite;nts;</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>$(GaussDBSupportedTargetFrameworks)</TargetFrameworks>
     <NoWarn>$(NoWarn);NU5104</NoWarn>
     <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
   </PropertyGroup>

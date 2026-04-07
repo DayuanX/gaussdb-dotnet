@@ -3,7 +3,7 @@
     <IsPackable>false</IsPackable>
     <Description>GeoJSON plugin for GaussDB, allowing mapping of PostGIS geometry types to GeoJSON types.</Description>
     <PackageTags>$(PackageTags);postgis;geojson;spatial</PackageTags>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>$(GaussDBSupportedTargetFrameworks)</TargetFrameworks>
     <NoWarn>$(NoWarn);NPG9001</NoWarn> <!-- Converter-related APIs are experimental -->
   </PropertyGroup>
 

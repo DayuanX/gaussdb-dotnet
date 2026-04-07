@@ -53,6 +53,8 @@ jobs:
             test_tfm: net8.0
           - config: Release
             test_tfm: net9.0
+          - config: Release
+            test_tfm: net10.0
 
     steps:
       - name: Update DB configuration
@@ -75,7 +77,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.props', '**/Directory.Build.targets', 'Directory.Packages.props', 'global.json') }}
           restore-keys: |
             ${{ runner.os }}-nuget
 
@@ -85,6 +87,7 @@ jobs:
           dotnet-version: | 
             8.0.x
             9.0.x
+            10.0.x
 
       - name: DependencyInjection Test
         run: |
