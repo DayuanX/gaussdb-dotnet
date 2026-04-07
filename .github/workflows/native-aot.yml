@@ -16,6 +16,7 @@ concurrency:
 
 env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  NPGSQL_TEST_DB: "Host=localhost;Port=5432;Username=gaussdb_tests;Password=gaussdb_tests;Database=gaussdb_tests;"
   AOT_Compat: |
     param([string]$targetFramework)
 
