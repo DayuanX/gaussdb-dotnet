@@ -86,9 +86,9 @@ jobs:
           done
           docker exec -i opengauss bash -lc 'export GAUSSHOME=/usr/local/opengauss; export PATH=$GAUSSHOME/bin:$PATH; export LD_LIBRARY_PATH=$GAUSSHOME/lib:$LD_LIBRARY_PATH; cat >/tmp/create_nossl_user.sql; $GAUSSHOME/bin/gsql postgresql://gaussdb:Password%401234@localhost:5432/gaussdb_tests -f /tmp/create_nossl_user.sql' <<'SQL'
           DROP USER IF EXISTS gaussdb_tests_nossl;
-          CREATE USER gaussdb_tests_nossl IDENTIFIED BY 'Password@1234';
+          CREATE USER gaussdb_tests_nossl PASSWORD 'Password@1234';
           SQL
-          docker exec -i opengauss bash -lc 'export GAUSSHOME=/usr/local/opengauss; export PATH=$GAUSSHOME/bin:$PATH; export LD_LIBRARY_PATH=$GAUSSHOME/lib:$LD_LIBRARY_PATH; cat >/tmp/verify_nossl_user.sql; $GAUSSHOME/bin/gsql "postgresql://gaussdb_tests_nossl:Password%401234@127.0.0.1:5432/gaussdb_tests?sslmode=disable" -f /tmp/verify_nossl_user.sql' <<'SQL'
+          docker exec -i opengauss bash -lc 'export GAUSSHOME=/usr/local/opengauss; export PATH=$GAUSSHOME/bin:$PATH; export LD_LIBRARY_PATH=$GAUSSHOME/lib:$LD_LIBRARY_PATH; cat >/tmp/verify_nossl_user.sql; $GAUSSHOME/bin/gsql "host=127.0.0.1 port=5432 dbname=gaussdb_tests user=gaussdb_tests_nossl sslmode=disable" -W Password@1234 -f /tmp/verify_nossl_user.sql' <<'SQL'
           SELECT current_user;
           SQL
 
