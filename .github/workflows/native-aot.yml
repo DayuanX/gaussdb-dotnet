@@ -192,21 +192,21 @@ jobs:
       - name: Upload mstat
         uses: actions/upload-artifact@v4
         with:
-          name: gaussdb.mstat
+          name: gaussdb.mstat-${{ matrix.tfm }}
           path: "test/GaussDB.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests.mstat"
           retention-days: 3
 
       - name: Upload codedgen dgml
         uses: actions/upload-artifact@v4
         with:
-          name: gaussdb.codegen.dgml.xml
+          name: gaussdb.codegen.dgml.xml-${{ matrix.tfm }}
           path: "test/GaussDB.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests.codegen.dgml.xml"
           retention-days: 3
 
       - name: Upload scan dgml
         uses: actions/upload-artifact@v4
         with:
-          name: gaussdb.scan.dgml.xml
+          name: gaussdb.scan.dgml.xml-${{ matrix.tfm }}
           path: "test/GaussDB.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests.scan.dgml.xml"
           retention-days: 3
 
