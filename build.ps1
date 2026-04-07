@@ -17,13 +17,25 @@ foreach ($arg in $args) {
 }
 
 $repoRoot = $PSScriptRoot
-$dotnetExe = Join-Path $repoRoot ".dotnet\dotnet.exe"
+$localDotnetExe = Join-Path $repoRoot ".dotnet\dotnet.exe"
+$useLocalDotnet = $false
 
-if (-not (Test-Path $dotnetExe)) {
-    throw "Local dotnet not found: $dotnetExe"
+if (Test-Path $localDotnetExe) {
+    $dotnetExe = $localDotnetExe
+    $useLocalDotnet = $true
+}
+else {
+    $dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
+    if ($null -eq $dotnetCommand) {
+        throw "dotnet not found. Checked $localDotnetExe and PATH."
+    }
+
+    $dotnetExe = $dotnetCommand.Source
 }
 
-$env:DOTNET_ROOT = Join-Path $repoRoot ".dotnet"
+if ($useLocalDotnet) {
+    $env:DOTNET_ROOT = Join-Path $repoRoot ".dotnet"
+}
 $env:DOTNET_MULTILEVEL_LOOKUP = "0"
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = "1"
 $env:DOTNET_NOLOGO = "1"

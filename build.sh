@@ -28,17 +28,26 @@ for arg in "$@"; do
 done
 
 repo_root="$(cd "$(dirname "$0")" && pwd)"
-dotnet_exe="$repo_root/.dotnet/dotnet"
-if [ ! -x "$dotnet_exe" ]; then
-  dotnet_exe="$repo_root/.dotnet/dotnet.exe"
-fi
+local_dotnet="$repo_root/.dotnet/dotnet"
+local_dotnet_win="$repo_root/.dotnet/dotnet.exe"
+use_local_dotnet="false"
 
-if [ ! -f "$dotnet_exe" ]; then
-  echo "Local dotnet not found: $dotnet_exe" >&2
+if [ -x "$local_dotnet" ]; then
+  dotnet_exe="$local_dotnet"
+  use_local_dotnet="true"
+elif [ -f "$local_dotnet_win" ]; then
+  dotnet_exe="$local_dotnet_win"
+  use_local_dotnet="true"
+elif command -v dotnet >/dev/null 2>&1; then
+  dotnet_exe="$(command -v dotnet)"
+else
+  echo "dotnet not found. Checked $local_dotnet, $local_dotnet_win, and PATH." >&2
   exit 1
 fi
 
-export DOTNET_ROOT="$repo_root/.dotnet"
+if [ "$use_local_dotnet" = "true" ]; then
+  export DOTNET_ROOT="$repo_root/.dotnet"
+fi
 export DOTNET_MULTILEVEL_LOOKUP=0
 export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 export DOTNET_NOLOGO=1
