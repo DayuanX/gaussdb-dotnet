@@ -2,7 +2,7 @@ using System;
 
 namespace HuaweiCloud.GaussDB;
 
-readonly record struct HaEndpoint(string Host, int Port)
+readonly record struct HaEndpoint(string Host, int Port, string? NodeName = null)
 {
     internal string Key
         => Host.Contains(':') && !Host.StartsWith("[", StringComparison.Ordinal)

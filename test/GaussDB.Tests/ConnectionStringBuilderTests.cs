@@ -125,7 +125,7 @@ class ConnectionStringBuilderTests
         var builder = new GaussDBConnectionStringBuilder();
         Assert.That(builder.PriorityServers, Is.EqualTo(0));
         Assert.That(builder.AutoBalance, Is.Null);
-        Assert.That(builder.RefreshCNIpListTime, Is.EqualTo(10));
+        Assert.That(builder.RefreshCNIpListTime, Is.EqualTo(0));
         Assert.That(builder.UsingEip, Is.True);
         Assert.That(builder.AutoReconnect, Is.False);
         Assert.That(builder.MaxReconnects, Is.EqualTo(3));
@@ -182,11 +182,22 @@ class ConnectionStringBuilderTests
     }
 
     [Test]
-    public void RefreshCNIpListTime_invalid_throws()
+    public void RefreshCNIpListTime_zero_disables_refresh()
+    {
+        var builder = new GaussDBConnectionStringBuilder
+        {
+            RefreshCNIpListTime = 0
+        };
+
+        Assert.That(builder.RefreshCNIpListTime, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void RefreshCNIpListTime_negative_throws()
         => Assert.Throws<ArgumentOutOfRangeException>(() =>
             new GaussDBConnectionStringBuilder
             {
-                RefreshCNIpListTime = 0
+                RefreshCNIpListTime = -1
             });
 
     [Test]

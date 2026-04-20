@@ -495,6 +495,9 @@ public sealed class GaussDBMultiHostDataSource : GaussDBDataSource
 
     bool ShouldUseCoordinatorSnapshot(string clusterKey, string? preferredClusterKey)
     {
+        if (Settings.RefreshCNIpListTime == 0)
+            return false;
+
         if (Settings.AutoBalanceModeParsed == HaAutoBalanceMode.Disabled)
             return false;
 
@@ -522,6 +525,7 @@ public sealed class GaussDBMultiHostDataSource : GaussDBDataSource
     async ValueTask<HaEndpoint[]?> RefreshCoordinatorEndpoints(SeedCluster cluster, CancellationToken cancellationToken)
     {
         // 只要该簇里有一个可达 seed CN，就用它查询 pgxc_node，拿到当前有效的 CN 列表。
+        var previousSnapshot = GaussDBCoordinatorListTracker.GetSnapshot(cluster.Key);
         foreach (var endpoint in cluster.SeedEndpoints)
         {
             var pool = GetOrAddEndpointPool(endpoint);
@@ -531,18 +535,33 @@ public sealed class GaussDBMultiHostDataSource : GaussDBDataSource
                 await using (connection.ConfigureAwait(false))
                 {
                     using var command = connection.CreateCommand();
-                    command.CommandText = Settings.UsingEip
-                        ? "select node_host1,node_port1 from pgxc_node where node_type='C' and nodeis_active = true order by node_host1;"
-                        : "select node_host,node_port from pgxc_node where node_type='C' and nodeis_active = true order by node_host;";
+                    command.CommandText =
+                        "select node_name,node_host,node_port,node_host1,node_port1 " +
+                        "from pgxc_node where node_type='C' and nodeis_active = true order by node_name;";
 
                     var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
                     await using (reader.ConfigureAwait(false))
                     {
-                        var refreshedEndpoints = new List<HaEndpoint>();
+                        var discoveredNodes = new List<GaussDBCoordinatorDiscovery.CoordinatorNodeRecord>();
                         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            refreshedEndpoints.Add(new(reader.GetString(0), reader.GetInt32(1)));
+                        {
+                            var nodeName = reader.GetString(0);
+                            var nodeHostEndpoint = new HaEndpoint(
+                                reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                                reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
+                                nodeName);
+                            var nodeHost1Endpoint = new HaEndpoint(
+                                reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                                reader.IsDBNull(4) ? 0 : reader.GetInt32(4),
+                                nodeName);
+                            discoveredNodes.Add(new(nodeName, nodeHostEndpoint, nodeHost1Endpoint));
+                        }
 
-                        return refreshedEndpoints.Count == 0 ? null : refreshedEndpoints.ToArray();
+                        return GaussDBCoordinatorDiscovery.ResolveClusterEndpoints(
+                            cluster.SeedEndpoints,
+                            previousSnapshot,
+                            discoveredNodes,
+                            Settings.UsingEip);
                     }
                 }
             }

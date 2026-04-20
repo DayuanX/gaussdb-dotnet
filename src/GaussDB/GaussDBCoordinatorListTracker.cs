@@ -40,6 +40,11 @@ static class GaussDBCoordinatorListTracker
         entry.LastAttemptTicks = DateTime.UtcNow.Ticks;
     }
 
+    internal static HaEndpoint[]? GetSnapshot(string clusterKey)
+        => Entries.TryGetValue(clusterKey, out var entry)
+            ? entry.Snapshot
+            : null;
+
     internal static void Reset()
         => Entries.Clear();
 

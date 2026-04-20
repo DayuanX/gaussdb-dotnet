@@ -2004,6 +2004,105 @@ public class MultipleHostsTests : TestBase
     }
 
     [Test]
+    [NonParallelizable]
+    public async Task AutoBalance_ignores_snapshot_when_refresh_interval_is_zero()
+    {
+        GaussDBGlobalClusterStatusTracker.Reset();
+        GaussDBCoordinatorListTracker.Reset();
+
+        await using var first = PgPostmasterMock.Start(state: Primary);
+        await using var second = PgPostmasterMock.Start(state: Primary);
+        await using var third = PgPostmasterMock.Start(state: Primary);
+
+        var builder = new GaussDBConnectionStringBuilder
+        {
+            Host = MultipleHosts(first, second, third),
+            AutoBalance = "priority2",
+            RefreshCNIpListTime = 0,
+            Pooling = false,
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading
+        };
+
+        GaussDBCoordinatorListTracker.SeedSnapshotForTesting(
+            ClusterKey(first, second, third),
+            GetUnreachableEndpoint(),
+            GetUnreachableEndpoint(),
+            GetUnreachableEndpoint());
+
+        await using var dataSource = new GaussDBDataSourceBuilder(builder.ConnectionString).BuildMultiHost();
+        await using var connection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Any);
+
+        Assert.That(new[] { first.Port, second.Port }, Contains.Item(connection.Port));
+    }
+
+    [Test]
+    public void Coordinator_discovery_keeps_only_known_cluster_node_names()
+    {
+        var seedEndpoints = new[]
+        {
+            new HaEndpoint("10.0.0.1", 8000),
+            new HaEndpoint("10.0.0.2", 8000)
+        };
+        var discoveredNodes = new[]
+        {
+            new GaussDBCoordinatorDiscovery.CoordinatorNodeRecord(
+                "cn_1",
+                new HaEndpoint("10.0.0.1", 8000, "cn_1"),
+                new HaEndpoint("172.16.0.1", 8000, "cn_1")),
+            new GaussDBCoordinatorDiscovery.CoordinatorNodeRecord(
+                "cn_2",
+                new HaEndpoint("10.0.0.2", 8000, "cn_2"),
+                new HaEndpoint("172.16.0.2", 8000, "cn_2")),
+            new GaussDBCoordinatorDiscovery.CoordinatorNodeRecord(
+                "cn_3",
+                new HaEndpoint("10.0.1.3", 8000, "cn_3"),
+                new HaEndpoint("172.16.1.3", 8000, "cn_3"))
+        };
+
+        var refreshedEndpoints = GaussDBCoordinatorDiscovery.ResolveClusterEndpoints(seedEndpoints, null, discoveredNodes, usingEip: true);
+
+        Assert.That(refreshedEndpoints, Is.Not.Null);
+        Assert.That(refreshedEndpoints!.Select(static endpoint => endpoint.NodeName), Is.EquivalentTo(new[] { "cn_1", "cn_2" }));
+        Assert.That(refreshedEndpoints.Select(static endpoint => endpoint.Host), Is.EquivalentTo(new[] { "172.16.0.1", "172.16.0.2" }));
+    }
+
+    [Test]
+    public void Coordinator_discovery_reuses_previous_snapshot_node_names_for_address_refresh()
+    {
+        var seedEndpoints = new[]
+        {
+            new HaEndpoint("10.0.0.1", 8000),
+            new HaEndpoint("10.0.0.2", 8000)
+        };
+        var previousSnapshot = new[]
+        {
+            new HaEndpoint("172.16.0.1", 8000, "cn_1"),
+            new HaEndpoint("172.16.0.2", 8000, "cn_2")
+        };
+        var discoveredNodes = new[]
+        {
+            new GaussDBCoordinatorDiscovery.CoordinatorNodeRecord(
+                "cn_1",
+                new HaEndpoint("10.10.0.1", 8000, "cn_1"),
+                new HaEndpoint("172.20.0.1", 8000, "cn_1")),
+            new GaussDBCoordinatorDiscovery.CoordinatorNodeRecord(
+                "cn_2",
+                new HaEndpoint("10.10.0.2", 8000, "cn_2"),
+                new HaEndpoint("172.20.0.2", 8000, "cn_2")),
+            new GaussDBCoordinatorDiscovery.CoordinatorNodeRecord(
+                "cn_3",
+                new HaEndpoint("10.10.0.3", 8000, "cn_3"),
+                new HaEndpoint("172.20.0.3", 8000, "cn_3"))
+        };
+
+        var refreshedEndpoints = GaussDBCoordinatorDiscovery.ResolveClusterEndpoints(seedEndpoints, previousSnapshot, discoveredNodes, usingEip: false);
+
+        Assert.That(refreshedEndpoints, Is.Not.Null);
+        Assert.That(refreshedEndpoints!.Select(static endpoint => endpoint.NodeName), Is.EquivalentTo(new[] { "cn_1", "cn_2" }));
+        Assert.That(refreshedEndpoints.Select(static endpoint => endpoint.Host), Is.EquivalentTo(new[] { "10.10.0.1", "10.10.0.2" }));
+    }
+
+    [Test]
     public async Task Coordinator_snapshot_refresh_failure_is_throttled_by_refresh_interval()
     {
         GaussDBCoordinatorListTracker.Reset();
