@@ -94,17 +94,17 @@ jobs:
 
       - name: DependencyInjection Test
         run: |
-          dotnet test `
-            test/GaussDB.DependencyInjection.Tests `
-            -c ${{ matrix.config }} `
-            -f ${{ matrix.test_tfm }} `
+          dotnet test \
+            test/GaussDB.DependencyInjection.Tests \
+            -c ${{ matrix.config }} \
+            -f ${{ matrix.test_tfm }} \
             --logger "GitHubActions;report-warnings=false"
       
       - name: Tests
         run: |
-          dotnet test `
-            test/GaussDB.Tests `
-            -c ${{ matrix.config }} `
-            -f ${{ matrix.test_tfm }} `
-            --filter "${{ env.GAUSSDB_TEST_FILTER }}" `
+          dotnet test \
+            test/GaussDB.Tests \
+            -c ${{ matrix.config }} \
+            -f ${{ matrix.test_tfm }} \
+            --filter "${{ env.GAUSSDB_TEST_FILTER }}" \
             --logger "GitHubActions;report-warnings=false"
