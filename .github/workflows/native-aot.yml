@@ -93,13 +93,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       #      - name: Setup nuget config
       #        run: echo "$nuget_config" > NuGet.config
   
       - name: NuGet Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
@@ -107,7 +107,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.3.1
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.x
 
@@ -129,13 +129,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       #      - name: Setup nuget config
       #        run: echo "$nuget_config" > NuGet.config
 
       - name: NuGet Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
@@ -143,7 +143,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.3.1
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.x
 
@@ -164,6 +164,8 @@ jobs:
 
       - name: Run
         run: test/GaussDB.NativeAotTests/bin/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests
+        env:
+          NPGSQL_TEST_DB: Server=localhost;Port=5432;Username=gaussdb_tests;Password=gaussdb_tests;Database=gaussdb_tests;Timeout=0;Command Timeout=0
 
       - name: Write binary size to summary
         run: |
@@ -174,21 +176,21 @@ jobs:
         run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f ${{ matrix.tfm }} -- "test/GaussDB.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload mstat
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gaussdb.mstat
           path: "test/GaussDB.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests.mstat"
           retention-days: 3
 
       - name: Upload codedgen dgml
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gaussdb.codegen.dgml.xml
           path: "test/GaussDB.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests.codegen.dgml.xml"
           retention-days: 3
 
       - name: Upload scan dgml
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gaussdb.scan.dgml.xml
           path: "test/GaussDB.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests.scan.dgml.xml"
