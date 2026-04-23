@@ -138,7 +138,7 @@ jobs:
           - 5432:5432
         options: >-
           --name opengauss
-          --health-cmd "sleep 15"
+          --health-cmd "bash -lc 'export LD_LIBRARY_PATH=/usr/local/opengauss/lib:$LD_LIBRARY_PATH; /usr/local/opengauss/bin/gsql -h 127.0.0.1 -U gaussdb -d gaussdb_tests -W Password@1234 -c \"SELECT 1\" >/dev/null'"
           --health-interval 10s
           --health-timeout 30s
           --health-retries 10
@@ -167,11 +167,12 @@ jobs:
         run: |
           docker exec opengauss bash -c "cat /var/lib/opengauss/data/postgresql.conf"
           for i in {1..30}; do
-            if [ "$(docker inspect --format='{{json .State.Health.Status}}' opengauss)" == "\"healthy\"" ]; then
+            if docker exec opengauss bash -lc 'export LD_LIBRARY_PATH=/usr/local/opengauss/lib:$LD_LIBRARY_PATH; /usr/local/opengauss/bin/gsql -h 127.0.0.1 -U gaussdb -d gaussdb_tests -W Password@1234 -c "SELECT 1" >/dev/null'; then
               break
             fi
             sleep 1
           done
+          docker exec opengauss bash -lc 'export LD_LIBRARY_PATH=/usr/local/opengauss/lib:$LD_LIBRARY_PATH; /usr/local/opengauss/bin/gsql -h 127.0.0.1 -U gaussdb -d gaussdb_tests -W Password@1234 -c "SELECT 1"'
           
       - name: Build
         run: dotnet publish test/GaussDB.NativeAotTests/GaussDB.NativeAotTests.csproj -r linux-x64 -c Release -f ${{ matrix.tfm }} -p:OptimizationPreference=Size

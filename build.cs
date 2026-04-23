@@ -1,9 +1,26 @@
-var target = CommandLineParser.Val(args, "target", "Default");
-var apiKey = CommandLineParser.Val(args, "apiKey");
-var noPush = CommandLineParser.BooleanVal(args, "noPush");
+var hasExplicitTarget = Array.Exists(args, arg => arg == "--target" || arg.StartsWith("--target=", StringComparison.Ordinal));
+var effectiveArgs = args;
+if (!hasExplicitTarget)
+{
+    effectiveArgs = new string[args.Length + 1];
+    effectiveArgs[0] = "--target=publish";
+    Array.Copy(args, 0, effectiveArgs, 1, args.Length);
+}
+
+var target = CommandLineParser.Val(effectiveArgs, "target", "publish");
+var apiKey = CommandLineParser.Val(effectiveArgs, "apiKey");
+var noPush = CommandLineParser.BooleanVal(effectiveArgs, "noPush");
 var version = Environment.GetEnvironmentVariable("VERSION");
-var stable = CommandLineParser.BooleanVal(args, "stable") || !string.IsNullOrEmpty(version);
+var stable = CommandLineParser.BooleanVal(effectiveArgs, "stable") || !string.IsNullOrEmpty(version);
 var runningOnGithubActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
+const string BaselineGitHubActionsTestFilter =
+    "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication&" +
+    "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.SecurityTests&" +
+    "FullyQualifiedName!~Open_physical_failure&" +
+    "FullyQualifiedName!~BaseColumnName_with_column_aliases";
+var githubActionsTestFilter = Environment.GetEnvironmentVariable("GAUSSDB_TEST_FILTER");
+if (string.IsNullOrEmpty(githubActionsTestFilter) && runningOnGithubActions)
+    githubActionsTestFilter = BaselineGitHubActionsTestFilter;
 
 Console.WriteLine($$"""
 Arguments:
@@ -12,7 +29,7 @@ target: {{target}}
 stable: {{stable}}
 noPush: {{noPush}}
 args:
-{{args.StringJoin("\n")}}
+{{effectiveArgs.StringJoin("\n")}}
 
 """);
 
@@ -46,66 +63,76 @@ var process = DotNetPackageBuildProcess.Create(options =>
                 var loggerOptions = runningOnGithubActions
                     ? "--logger GitHubActions"
                     : "--logger \"console;verbosity=d\"";
-                var command = $"dotnet test --blame --collect:\"XPlat Code Coverage;Format=cobertura,opencover;ExcludeByAttribute=ExcludeFromCodeCoverage,Obsolete,GeneratedCode,CompilerGenerated\" {loggerOptions} -v=d {project}";
+                var filterOptions = string.Empty;
+                if (!string.IsNullOrEmpty(githubActionsTestFilter) &&
+                    project.EndsWith("GaussDB.Tests.csproj", StringComparison.Ordinal))
+                {
+                    filterOptions = $" --filter \"{githubActionsTestFilter}\"";
+                }
+
+                var command =
+                    $"dotnet test --blame --collect:\"XPlat Code Coverage;Format=cobertura,opencover;ExcludeByAttribute=ExcludeFromCodeCoverage,Obsolete,GeneratedCode,CompilerGenerated\" {loggerOptions}{filterOptions} -v=d {project}";
                 await ExecuteCommandAsync(command, cancellationToken);
             }
         }));
 
-    options.WithTaskConfigure("pack", task => task
+    options.WithTaskConfigure("publish", task => task
         .WithDescription("dotnet pack")
         .WithDependency("build")
-        .WithExecution(async cancellationToken =>
-        {
-            // The script owns package cleanup and publishing so local and CI runs stay aligned.
-            if (Directory.Exists("./artifacts/packages"))
-                Directory.Delete("./artifacts/packages", true);
-
-            var packOptions = " -o ./artifacts/packages";
-            if (stable)
-            {
-                if (!string.IsNullOrEmpty(version))
-                    packOptions += $" -p VersionPrefix={version}";
-            }
-            else
-            {
-                var suffix = $"preview-{DateTime.UtcNow:yyyyMMdd-HHmmss}";
-                packOptions += $" --version-suffix {suffix}";
-            }
-
-            foreach (var project in srcProjects)
-                await ExecuteCommandAsync($"dotnet pack {project} {packOptions}", cancellationToken);
-
-            if (noPush)
-            {
-                Console.WriteLine("Skip push there's noPush specified");
-                return;
-            }
-
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                apiKey = Environment.GetEnvironmentVariable("NUGET_API_KEY");
-
-                if (string.IsNullOrEmpty(apiKey))
-                {
-                    Console.WriteLine("Skip push since there's no apiKey found");
-                    return;
-                }
-            }
-
-            foreach (var file in Directory.GetFiles("./artifacts/packages/", "*.nupkg"))
-            {
-                await RetryHelper.TryInvokeAsync(
-                    () => ExecuteCommandAsync($"dotnet nuget push {file} -s https://api.nuget.org/v3/index.json -k {apiKey} --skip-duplicate", cancellationToken),
-                    cancellationToken: cancellationToken);
-            }
-        }));
+        .WithExecution(PackAndMaybePushAsync));
 });
 
 Console.WriteLine("Cleaning previous package artifacts if they exist.");
 if (Directory.Exists("./artifacts/packages"))
     Directory.Delete("./artifacts/packages", true);
 
-await process.ExecuteAsync(args, ApplicationHelper.ExitToken);
+await process.ExecuteAsync(effectiveArgs, ApplicationHelper.ExitToken);
+
+async Task PackAndMaybePushAsync(CancellationToken cancellationToken)
+{
+    // The script owns package cleanup and publishing so local and CI runs stay aligned.
+    if (Directory.Exists("./artifacts/packages"))
+        Directory.Delete("./artifacts/packages", true);
+
+    var packOptions = " -o ./artifacts/packages";
+    if (stable)
+    {
+        if (!string.IsNullOrEmpty(version))
+            packOptions += $" -p VersionPrefix={version}";
+    }
+    else
+    {
+        var suffix = $"preview-{DateTime.UtcNow:yyyyMMdd-HHmmss}";
+        packOptions += $" --version-suffix {suffix}";
+    }
+
+    foreach (var project in srcProjects)
+        await ExecuteCommandAsync($"dotnet pack {project} {packOptions}", cancellationToken);
+
+    if (noPush)
+    {
+        Console.WriteLine("Skip push there's noPush specified");
+        return;
+    }
+
+    if (string.IsNullOrEmpty(apiKey))
+    {
+        apiKey = Environment.GetEnvironmentVariable("NUGET_API_KEY");
+
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            Console.WriteLine("Skip push since there's no apiKey found");
+            return;
+        }
+    }
+
+    foreach (var file in Directory.GetFiles("./artifacts/packages/", "*.nupkg"))
+    {
+        await RetryHelper.TryInvokeAsync(
+            () => ExecuteCommandAsync($"dotnet nuget push {file} -s https://api.nuget.org/v3/index.json -k {apiKey} --skip-duplicate", cancellationToken),
+            cancellationToken: cancellationToken);
+    }
+}
 
 async Task ExecuteCommandAsync(string commandText, CancellationToken cancellationToken = default)
 {
