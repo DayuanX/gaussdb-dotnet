@@ -24,6 +24,16 @@ jobs:
     env:
       # do not specify IncludeErrorDetail=true in connection string directly, it would affect the unit tests
       NPGSQL_TEST_DB: "Host=localhost;Port=5432;Username=gaussdb;Password=Password@1234;Database=gaussdb_tests;"
+      # Exclusions kept in the baseline CI:
+      # - Replication: requires extra server-side prerequisites such as logical wal_level.
+      # - SecurityTests: this baseline openGauss service doesn't provide backend SSL support.
+      # - Open_physical_failure: tracked separately as a pooling/physical-open outlier.
+      # - BaseColumnName_with_column_aliases: tracked separately as a schema metadata outlier.
+      GAUSSDB_TEST_FILTER: >-
+        FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication&
+        FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.SecurityTests&
+        FullyQualifiedName!~Open_physical_failure&
+        FullyQualifiedName!~BaseColumnName_with_column_aliases
 
     # Service containers to run with `container-job`
     # https://docs.github.com/en/actions/use-cases-and-examples/using-containerized-services/creating-postgresql-service-containers
@@ -84,11 +94,17 @@ jobs:
 
       - name: DependencyInjection Test
         run: |
-          dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/GaussDB.DependencyInjection.Tests --logger "GitHubActions;report-warnings=false"
+          dotnet test `
+            test/GaussDB.DependencyInjection.Tests `
+            -c ${{ matrix.config }} `
+            -f ${{ matrix.test_tfm }} `
+            --logger "GitHubActions;report-warnings=false"
       
       - name: Tests
         run: |
-          # Replication tests require extra server-side prerequisites such as logical wal_level,
-          # and SSL tests require backend SSL support which this baseline openGauss service doesn't provide.
-          # A few additional openGauss-baseline outliers are tracked separately from this main CI run.
-          dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/GaussDB.Tests --filter "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication&FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.SecurityTests&FullyQualifiedName!~Open_physical_failure&FullyQualifiedName!~BaseColumnName_with_column_aliases" --logger "GitHubActions;report-warnings=false"
+          dotnet test `
+            test/GaussDB.Tests `
+            -c ${{ matrix.config }} `
+            -f ${{ matrix.test_tfm }} `
+            --filter "${{ env.GAUSSDB_TEST_FILTER }}" `
+            --logger "GitHubActions;report-warnings=false"
