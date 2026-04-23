@@ -92,4 +92,6 @@ jobs:
       
       - name: Tests
         run: |
-          dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/GaussDB.Tests --logger "GitHubActions;report-warnings=false"
+          # Replication tests require extra server-side prerequisites such as logical wal_level,
+          # and are tracked separately from the baseline openGauss CI run for this branch.
+          dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/GaussDB.Tests --filter "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication" --logger "GitHubActions;report-warnings=false"
