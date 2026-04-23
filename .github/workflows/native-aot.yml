@@ -89,7 +89,7 @@ jobs:
       matrix:
         os: [ ubuntu-24.04 ]
         pg_major: [ 15 ]
-        tfm: [ net9.0 ]
+        tfm: [ net8.0 ]
 
     steps:
       - name: Checkout
@@ -108,6 +108,8 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.3.1
+        with:
+          dotnet-version: 8.0.x
 
       - name: Write script
         run: echo "$AOT_Compat" > test-aot-compatibility.ps1
@@ -123,7 +125,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04]
         pg_major: [15]
-        tfm: [ net9.0 ]
+        tfm: [ net8.0 ]
 
     steps:
       - name: Checkout
@@ -142,6 +144,8 @@ jobs:
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4.3.1
+        with:
+          dotnet-version: 8.0.x
 
       - name: Start PostgreSQL
         run: |
@@ -163,11 +167,11 @@ jobs:
 
       - name: Write binary size to summary
         run: |
-          size="$(ls -l test/GaussDB.NativeAotTests/bin/Release/net9.0/linux-x64/native/GaussDB.NativeAotTests | cut -d ' ' -f 5)"
+          size="$(ls -l test/GaussDB.NativeAotTests/bin/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)" >> $GITHUB_STEP_SUMMARY
 
       - name: Dump mstat
-        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f ${{ matrix.tfm }} -- "test/GaussDB.NativeAotTests/obj/Release/net9.0/linux-x64/native/GaussDB.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
+        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f ${{ matrix.tfm }} -- "test/GaussDB.NativeAotTests/obj/Release/${{ matrix.tfm }}/linux-x64/native/GaussDB.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload mstat
         uses: actions/upload-artifact@v4
