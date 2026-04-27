@@ -895,6 +895,9 @@ public class MultipleHostsTests : TestBase
     [Test, NonParallelizable]
     public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
     {
+        if (TestUtil.IsGaussDBProductTest && !TestUtil.EnableMultiHostTests)
+            Assert.Ignore("Requires GAUSSDB_TEST_ENABLE_MULTIHOST=true because this test uses localhost,127.0.0.1 loopback topology");
+
         PoolManager.Reset();
 
         var dataSourceBuilder = new GaussDBDataSourceBuilder(ConnectionString)

@@ -31,11 +31,22 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         await using var conn = await OpenConnectionAsync();
         var walLevel = (string)(await conn.ExecuteScalarAsync("SHOW wal_level"))!;
         if (walLevel != "logical")
+        {
+            if (TestUtil.IsGaussDBBaselineCi)
+                Assert.Ignore("wal_level needs to be set to 'logical' in the PostgreSQL conf");
+
             TestUtil.IgnoreExceptOnBuildServer("wal_level needs to be set to 'logical' in the PostgreSQL conf");
+        }
 
         var maxWalSenders = int.Parse((string)(await conn.ExecuteScalarAsync("SHOW max_wal_senders"))!);
         if (maxWalSenders < 50)
         {
+            if (TestUtil.IsGaussDBBaselineCi)
+            {
+                Assert.Ignore(
+                    $"max_wal_senders is too low ({maxWalSenders}) and could lead to transient failures. Skipping replication tests");
+            }
+
             TestUtil.IgnoreExceptOnBuildServer(
                 $"max_wal_senders is too low ({maxWalSenders}) and could lead to transient failures. Skipping replication tests");
         }

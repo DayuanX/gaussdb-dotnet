@@ -13,13 +13,12 @@ var noPush = CommandLineParser.BooleanVal(effectiveArgs, "noPush");
 var version = Environment.GetEnvironmentVariable("VERSION");
 var stable = CommandLineParser.BooleanVal(effectiveArgs, "stable") || !string.IsNullOrEmpty(version);
 var runningOnGithubActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
+var runningBaselineCi = runningOnGithubActions || Environment.GetEnvironmentVariable("GAUSSDB_BASELINE_CI") == "true";
 const string BaselineGitHubActionsTestFilter =
-    "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication&" +
     "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.SecurityTests&" +
-    "FullyQualifiedName!~Open_physical_failure&" +
-    "FullyQualifiedName!~BaseColumnName_with_column_aliases";
+    "FullyQualifiedName!~Open_physical_failure";
 var githubActionsTestFilter = Environment.GetEnvironmentVariable("GAUSSDB_TEST_FILTER");
-if (string.IsNullOrEmpty(githubActionsTestFilter) && runningOnGithubActions)
+if (string.IsNullOrEmpty(githubActionsTestFilter) && runningBaselineCi)
     githubActionsTestFilter = BaselineGitHubActionsTestFilter;
 
 Console.WriteLine($$"""
