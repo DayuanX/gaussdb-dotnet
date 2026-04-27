@@ -28,6 +28,9 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
     [SetUp]
     public async Task Setup()
     {
+        if ((TestUtil.IsGaussDBBaselineCi || TestUtil.IsGaussDBProductTest) && !TestUtil.EnableReplicationTests)
+            Assert.Ignore("Replication tests require GAUSSDB_TEST_ENABLE_REPLICATION=true in this test profile");
+
         await using var conn = await OpenConnectionAsync();
         var walLevel = (string)(await conn.ExecuteScalarAsync("SHOW wal_level"))!;
         if (walLevel != "logical")

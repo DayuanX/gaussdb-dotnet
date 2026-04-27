@@ -601,7 +601,12 @@ public class SecurityTests : TestBase
         using var conn = OpenConnection();
         var sslSupport = (string)conn.ExecuteScalar("SHOW ssl")!;
         if (sslSupport == "off")
+        {
+            if (IsGaussDBBaselineCi && !EnableSslTests)
+                Assert.Ignore("SSL support isn't enabled in the baseline CI backend");
+
             IgnoreExceptOnBuildServer("SSL support isn't enabled at the backend");
+        }
     }
 
     #endregion

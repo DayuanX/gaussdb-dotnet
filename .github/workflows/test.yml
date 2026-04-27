@@ -28,8 +28,8 @@ jobs:
       # Exclusions kept in the baseline CI:
       # - SecurityTests: this baseline openGauss service doesn't provide backend SSL support.
       # - Open_physical_failure: tracked separately as a pooling/physical-open outlier.
-      GAUSSDB_TEST_FILTER: >-
-        FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.SecurityTests&
+      GAUSSDB_TEST_FILTER: |-
+        FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.SecurityTests
         FullyQualifiedName!~Open_physical_failure
 
     # Service containers to run with `container-job`
@@ -100,9 +100,11 @@ jobs:
       
       - name: Tests
         run: |
+          TEST_FILTER="$(printf '%s\n' "$GAUSSDB_TEST_FILTER" | awk 'NF { printf "%s%s", sep, $0; sep="&" }')"
+          echo "Using test filter: $TEST_FILTER"
           dotnet test \
             test/GaussDB.Tests \
             -c ${{ matrix.config }} \
             -f ${{ matrix.test_tfm }} \
-            --filter "${{ env.GAUSSDB_TEST_FILTER }}" \
+            --filter "$TEST_FILTER" \
             --logger "GitHubActions;report-warnings=false"

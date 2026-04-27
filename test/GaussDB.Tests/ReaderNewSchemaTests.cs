@@ -65,20 +65,15 @@ public class ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : SyncOrAsyncTestBase
     [Test]
     public async Task BaseColumnName_with_column_aliases()
     {
-        using var conn = OpenConnection();
+        await using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, @"
+            Cod varchar(5) PRIMARY KEY,
+            Descr varchar(40),
+            Date date");
 
-        conn.ExecuteNonQuery(@"
-                CREATE TEMP TABLE data (
-                    Cod varchar(5) NOT NULL,
-                    Descr varchar(40),
-                    Date date,
-                    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
-                );
-            ");
+        var cmd = new GaussDBCommand($"SELECT Cod as CodAlias, Descr as DescrAlias, Date, NULL AS Generated FROM {table}", conn);
 
-        var cmd = new GaussDBCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Date, NULL AS Generated FROM data", conn);
-
-        using var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+        await using var dr = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var cols = await GetColumnSchema(dr);
 
         Assert.That(cols[0].BaseColumnName, Is.EqualTo("cod"));
