@@ -35,8 +35,10 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
 
         var maxWalSenders = int.Parse((string)(await conn.ExecuteScalarAsync("SHOW max_wal_senders"))!);
         if (maxWalSenders < 50)
+        {
             TestUtil.IgnoreExceptOnBuildServer(
                 $"max_wal_senders is too low ({maxWalSenders}) and could lead to transient failures. Skipping replication tests");
+        }
     }
 
     private protected Task<TConnection> OpenReplicationConnectionAsync(

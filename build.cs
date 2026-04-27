@@ -26,6 +26,13 @@ const string BaselineCiTestFilter =
     "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication&" +
     "FullyQualifiedName!~Open_physical_failure&" +
     "FullyQualifiedName!~BaseColumnName_with_column_aliases";
+// Local product runs target a remote single-node GaussDB environment, so they keep CI-valid localhost
+// topology tests out of the local profile without weakening the CI baseline.
+// - Replication: requires dedicated logical replication server prerequisites and is covered separately.
+// - Open_physical_failure: current fork expects TimeoutException while upstream expects SocketException.
+// - BaseColumnName_with_column_aliases: fixed temp table name can survive pooled sessions and fail with 42P07.
+// - IntegrationTest: hardcodes localhost,127.0.0.1 and requires a local multi-host topology.
+// - Multiple_hosts_with_disabled_sql_rewriting: also hardcodes localhost,127.0.0.1.
 const string LocalProductTestFilter =
     "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication&" +
     "FullyQualifiedName!~Open_physical_failure&" +
