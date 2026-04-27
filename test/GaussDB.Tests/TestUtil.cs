@@ -35,22 +35,6 @@ public static class TestUtil
         Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != null ||
         Environment.GetEnvironmentVariable("CI") != null;
 
-    public static bool IsGaussDBBaselineCi => IsTruthyEnvironmentVariable("GAUSSDB_BASELINE_CI");
-
-    public static bool IsGaussDBProductTest => IsTruthyEnvironmentVariable("GAUSSDB_PRODUCT_TEST");
-
-    public static bool EnableSslTests => IsTruthyEnvironmentVariable("GAUSSDB_TEST_ENABLE_SSL");
-
-    public static bool EnableReplicationTests => IsTruthyEnvironmentVariable("GAUSSDB_TEST_ENABLE_REPLICATION");
-
-    public static bool EnableMultiHostTests => IsTruthyEnvironmentVariable("GAUSSDB_TEST_ENABLE_MULTIHOST");
-
-    static bool IsTruthyEnvironmentVariable(string name)
-    {
-        var value = Environment.GetEnvironmentVariable(name);
-        return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1";
-    }
-
     /// <summary>
     /// Calls Assert.Ignore() unless we're on the build server, in which case calls
     /// Assert.Fail(). We don't to miss any regressions just because something was misconfigured

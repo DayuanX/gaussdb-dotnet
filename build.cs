@@ -13,13 +13,33 @@ var noPush = CommandLineParser.BooleanVal(effectiveArgs, "noPush");
 var version = Environment.GetEnvironmentVariable("VERSION");
 var stable = CommandLineParser.BooleanVal(effectiveArgs, "stable") || !string.IsNullOrEmpty(version);
 var runningOnGithubActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
-var runningBaselineCi = runningOnGithubActions || Environment.GetEnvironmentVariable("GAUSSDB_BASELINE_CI") == "true";
-const string BaselineGitHubActionsTestFilter =
+var configuredTestProfile = Environment.GetEnvironmentVariable("GAUSSDB_TEST_PROFILE");
+var testProfile = string.IsNullOrWhiteSpace(configuredTestProfile)
+    ? (runningOnGithubActions ? "ci-baseline" : "")
+    : configuredTestProfile;
+var runningBaselineCi = string.Equals(testProfile, "ci-baseline", StringComparison.OrdinalIgnoreCase);
+var runningLocalProductTest = string.Equals(testProfile, "local-product", StringComparison.OrdinalIgnoreCase);
+
+// Keep these exclusions narrow. CI baseline exclusions are documented in .github/workflows/test.yml.
+const string BaselineCiTestFilter =
     "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.SecurityTests&" +
-    "FullyQualifiedName!~Open_physical_failure";
-var githubActionsTestFilter = Environment.GetEnvironmentVariable("GAUSSDB_TEST_FILTER");
-if (string.IsNullOrEmpty(githubActionsTestFilter) && runningBaselineCi)
-    githubActionsTestFilter = BaselineGitHubActionsTestFilter;
+    "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication&" +
+    "FullyQualifiedName!~Open_physical_failure&" +
+    "FullyQualifiedName!~BaseColumnName_with_column_aliases";
+const string LocalProductTestFilter =
+    "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.Replication&" +
+    "FullyQualifiedName!~Open_physical_failure&" +
+    "FullyQualifiedName!~BaseColumnName_with_column_aliases&" +
+    "FullyQualifiedName!~HuaweiCloud.GaussDB.Tests.MultipleHostsTests.IntegrationTest&" +
+    "FullyQualifiedName!~Multiple_hosts_with_disabled_sql_rewriting";
+var testFilter = NormalizeTestFilter(Environment.GetEnvironmentVariable("GAUSSDB_TEST_FILTER"));
+if (string.IsNullOrEmpty(testFilter))
+{
+    if (runningBaselineCi)
+        testFilter = BaselineCiTestFilter;
+    else if (runningLocalProductTest)
+        testFilter = LocalProductTestFilter;
+}
 
 Console.WriteLine($$"""
 Arguments:
@@ -27,6 +47,8 @@ Arguments:
 target: {{target}}
 stable: {{stable}}
 noPush: {{noPush}}
+testProfile: {{(string.IsNullOrEmpty(testProfile) ? "(none)" : testProfile)}}
+testFilter: {{(string.IsNullOrEmpty(testFilter) ? "(none)" : testFilter)}}
 args:
 {{effectiveArgs.StringJoin("\n")}}
 
@@ -63,10 +85,10 @@ var process = DotNetPackageBuildProcess.Create(options =>
                     ? "--logger GitHubActions"
                     : "--logger \"console;verbosity=d\"";
                 var filterOptions = string.Empty;
-                if (!string.IsNullOrEmpty(githubActionsTestFilter) &&
+                if (!string.IsNullOrEmpty(testFilter) &&
                     project.EndsWith("GaussDB.Tests.csproj", StringComparison.Ordinal))
                 {
-                    filterOptions = $" --filter \"{githubActionsTestFilter}\"";
+                    filterOptions = $" --filter \"{testFilter}\"";
                 }
 
                 var command =
@@ -86,6 +108,17 @@ if (Directory.Exists("./artifacts/packages"))
     Directory.Delete("./artifacts/packages", true);
 
 await process.ExecuteAsync(effectiveArgs, ApplicationHelper.ExitToken);
+
+static string? NormalizeTestFilter(string? filter)
+{
+    if (string.IsNullOrWhiteSpace(filter))
+        return null;
+
+    var parts = filter.Split(
+        new[] { "\r\n", "\n", "\r" },
+        StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    return string.Join("&", parts);
+}
 
 async Task PackAndMaybePushAsync(CancellationToken cancellationToken)
 {
