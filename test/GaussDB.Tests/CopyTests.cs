@@ -536,6 +536,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
+    // Verifies that the exporter skips header extension bytes and still reads the first field correctly.
     public async Task Exporter_skips_header_extension_and_reads_first_field_correctly()
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
@@ -566,6 +567,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
+    // Verifies that a binary trailer arriving in the same CopyData payload as the last row is still parsed.
     public async Task Exporter_reads_trailer_from_same_copy_data_message()
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
@@ -597,6 +599,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
+    // Verifies that unsupported OID mode is rejected up front rather than partially reading the stream.
     public async Task Exporter_throws_on_oid_copy_flags()
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
@@ -616,6 +619,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
+    // Verifies that unrecognized COPY flags are rejected before any row decoding begins.
     public async Task Exporter_throws_on_unknown_copy_flags()
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
@@ -635,6 +639,8 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
+    // Real end-to-end regression on GaussDB: roundtrip binary import/export with multiple rows,
+    // null handling, bytea data, and a stable export order.
     public async Task Binary_roundtrip_no_oids_real_compatibility()
     {
         await using var conn = await OpenConnectionAsync();

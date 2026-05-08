@@ -19,6 +19,7 @@ public sealed class GaussDBBinaryExporter : ICancelable
 {
     const int BeforeRow = -2;
     const int BeforeColumn = -1;
+    // Binary COPY ends its file-format payload with Int16 -1 before the protocol-level CopyDone.
     const short BinaryCopyTrailer = -1;
     const int FileHasEncodingFlag = 1 << 15;
     const int SupportedCopyFlags = FileHasEncodingFlag;
@@ -31,6 +32,8 @@ public sealed class GaussDBBinaryExporter : ICancelable
     long _endOfMessagePos;
 
     short _column;
+    // The actual number of columns in the current row payload. Some servers emit the last row and the
+    // binary trailer inside a single CopyData message, so this must be tracked independently from NumColumns.
     int _currentRowColumnCount;
     ulong _rowsExported;
 
@@ -123,6 +126,7 @@ public sealed class GaussDBBinaryExporter : ICancelable
             throw new GaussDBException("Invalid COPY binary header extension length");
         if (headerExtensionLength > 0)
         {
+            // The extension section is opaque to the client and may carry server-specific data.
             await _buf.Ensure(headerExtensionLength, async).ConfigureAwait(false);
             _buf.Skip(headerExtensionLength);
         }
@@ -168,9 +172,9 @@ public sealed class GaussDBBinaryExporter : ICancelable
             _column++;
         }
 
-        // The very first row may be included in the header's CopyData message. Rows and the trailer
-        // may also share a CopyData message, so only read another backend message after consuming the
-        // current CopyData payload.
+        // The first row can begin in the header CopyData, and the last row can share a CopyData message
+        // with the binary trailer. Only read the next backend message after the current payload is fully
+        // consumed; otherwise a trailing CopyDone can be mistaken for a row payload boundary.
         var atRowBoundary = _column == BeforeRow || _column == _currentRowColumnCount;
         if (atRowBoundary && _buf.CumulativeReadPosition == _endOfMessagePos)
         {
@@ -182,9 +186,9 @@ public sealed class GaussDBBinaryExporter : ICancelable
                 break;
             case BackendMessageCode.CopyDone:
                 // PostgreSQL binary COPY normally ends with an Int16 -1 trailer inside the last CopyData
-                // payload. Some GaussDB/openGauss single-node paths skip that file-format trailer and go
-                // straight to protocol-level CopyDone after the last row, so accept CopyDone only when we
-                // are already at a row boundary.
+                // payload. Some GaussDB/openGauss paths skip that file-format trailer and go straight to
+                // protocol-level CopyDone after the last row, so accept CopyDone only when we are already
+                // at a row boundary.
                 await ConsumeCopyCompletionMessages(async).ConfigureAwait(false);
                 _column = BeforeRow;
                 _isConsumed = true;
@@ -199,8 +203,8 @@ public sealed class GaussDBBinaryExporter : ICancelable
         await _buf.Ensure(2, async).ConfigureAwait(false);
 
         var numColumns = _buf.ReadInt16();
-        // In the binary COPY file format, the per-row column count is Int16 -1 for EOF.
-        // The server still follows it with the protocol-level CopyDone message.
+        // In the binary COPY file format, the per-row column count is Int16 -1 for EOF, and the server
+        // still follows it with the protocol-level CopyDone message.
         if (numColumns == BinaryCopyTrailer)
         {
             Expect<CopyDoneMessage>(await _connector.ReadMessage(async).ConfigureAwait(false), _connector);
