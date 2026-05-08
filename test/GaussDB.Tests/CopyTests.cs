@@ -665,7 +665,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
 
         Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(3));
 
-        await using var exporter = await conn.BeginBinaryExportAsync($"COPY {table} (id, note, payload) TO STDOUT BINARY");
+        await using var exporter = await conn.BeginBinaryExportAsync($"COPY (SELECT id, note, payload FROM {table} ORDER BY id) TO STDOUT BINARY");
         Assert.That(await exporter.StartRowAsync(), Is.EqualTo(3));
         Assert.That(exporter.Read<int>(), Is.EqualTo(7));
         Assert.That(exporter.Read<string>(), Is.EqualTo("alpha"));
