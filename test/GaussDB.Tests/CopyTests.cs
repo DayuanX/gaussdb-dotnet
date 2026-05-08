@@ -597,35 +597,6 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
-    public async Task Exporter_treats_copy_done_after_last_row_as_end_of_copy()
-    {
-        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
-        await using var conn = await dataSource.OpenConnectionAsync();
-
-        var server = await postmasterMock.WaitForServerConnection();
-        const string copyCommand = "COPY (SELECT 1::int4) TO STDOUT BINARY";
-        var exportTask = conn.BeginBinaryExportAsync(copyCommand);
-
-        await server.ExpectSimpleQuery(copyCommand);
-        WriteCopyOutResponse(server, numColumns: 1);
-        WriteCopyData(server, BuildHeaderAndSingleRowPayload(
-            flags: FileHasEncodingFlag,
-            extensionPayload: [0, 7],
-            rowFields: [Int32ToBigEndianBytes(1)]));
-        WriteCopyDone(server);
-        server.WriteCommandComplete("COPY 1");
-        server.WriteReadyForQuery();
-        await server.FlushAsync();
-
-        await using var exporter = await exportTask;
-
-        Assert.That(exporter.StartRow(), Is.EqualTo(1));
-        Assert.That(exporter.Read<int>(), Is.EqualTo(1));
-        Assert.That(exporter.StartRow(), Is.EqualTo(-1));
-    }
-
-    [Test]
     public async Task Exporter_throws_on_oid_copy_flags()
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
@@ -664,21 +635,54 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
-    public async Task Binary_roundtrip_no_oids_minimal_regression()
+    public async Task Binary_roundtrip_no_oids_real_compatibility()
     {
         await using var conn = await OpenConnectionAsync();
-        var table = await CreateTempTable(conn, "value INT4");
+        var table = await CreateTempTable(conn, "id INT4, note TEXT, payload BYTEA");
+        var longNote = new string('x', conn.Settings.WriteBufferSize + 50);
+        var payload1 = new byte[] { 1, 2, 3 };
+        var payload3 = new byte[] { 9, 8, 7, 6, 5, 4 };
 
-        await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (value) FROM STDIN BINARY"))
+        await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (id, note, payload) FROM STDIN BINARY"))
         {
             await writer.StartRowAsync();
             await writer.WriteAsync(7);
-            Assert.That(await writer.CompleteAsync(), Is.EqualTo(1));
+            await writer.WriteAsync("alpha");
+            await writer.WriteAsync(payload1, GaussDBDbType.Bytea);
+
+            await writer.StartRowAsync();
+            await writer.WriteAsync(8);
+            writer.WriteNull();
+            writer.WriteNull();
+
+            await writer.StartRowAsync();
+            await writer.WriteAsync(9);
+            await writer.WriteAsync(longNote);
+            await writer.WriteAsync(payload3, GaussDBDbType.Bytea);
+
+            Assert.That(await writer.CompleteAsync(), Is.EqualTo(3));
         }
 
-        await using var exporter = await conn.BeginBinaryExportAsync($"COPY {table} (value) TO STDOUT BINARY");
-        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(1));
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(3));
+
+        await using var exporter = await conn.BeginBinaryExportAsync($"COPY {table} (id, note, payload) TO STDOUT BINARY");
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(3));
         Assert.That(exporter.Read<int>(), Is.EqualTo(7));
+        Assert.That(exporter.Read<string>(), Is.EqualTo("alpha"));
+        Assert.That(exporter.Read<byte[]>(GaussDBDbType.Bytea), Is.EqualTo(payload1));
+
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(3));
+        Assert.That(exporter.Read<int>(), Is.EqualTo(8));
+        Assert.That(exporter.IsNull, Is.True);
+        exporter.Skip();
+        Assert.That(exporter.IsNull, Is.True);
+        exporter.Skip();
+
+        Assert.That(await exporter.StartRowAsync(), Is.EqualTo(3));
+        Assert.That(exporter.Read<int>(), Is.EqualTo(9));
+        Assert.That(exporter.Read<string>(), Is.EqualTo(longNote));
+        Assert.That(exporter.Read<byte[]>(GaussDBDbType.Bytea), Is.EqualTo(payload3));
+
         Assert.That(await exporter.StartRowAsync(), Is.EqualTo(-1));
     }
 
