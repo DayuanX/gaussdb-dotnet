@@ -21,6 +21,9 @@ public sealed class GaussDBBinaryExporter : ICancelable
     const int BeforeColumn = -1;
     // Binary COPY ends its file-format payload with Int16 -1 before the protocol-level CopyDone.
     const short BinaryCopyTrailer = -1;
+    // GaussDB/openGauss may set file_has_encoding and place a 2-byte encoding marker in the header
+    // extension area. The driver does not interpret that value; it only consumes the declared bytes
+    // so row decoding remains aligned with the first real field.
     const int FileHasEncodingFlag = 1 << 15;
     const int SupportedCopyFlags = FileHasEncodingFlag;
 
@@ -126,7 +129,8 @@ public sealed class GaussDBBinaryExporter : ICancelable
             throw new GaussDBException("Invalid COPY binary header extension length");
         if (headerExtensionLength > 0)
         {
-            // The extension section is opaque to the client and may carry server-specific data.
+            // The extension payload can carry server-specific metadata, including the 2-byte file
+            // encoding marker associated with file_has_encoding. We treat it as opaque and skip it.
             await _buf.Ensure(headerExtensionLength, async).ConfigureAwait(false);
             _buf.Skip(headerExtensionLength);
         }

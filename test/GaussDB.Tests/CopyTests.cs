@@ -536,7 +536,9 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
-    // Verifies that the exporter skips header extension bytes and still reads the first field correctly.
+    // Protocol-level regression for GaussDB/openGauss binary COPY headers that set file_has_encoding.
+    // The 2-byte extension payload models the file encoding marker carried in the header extension;
+    // the exporter must consume it as opaque metadata and begin typed decoding at the first row field.
     public async Task Exporter_skips_header_extension_and_reads_first_field_correctly()
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
@@ -567,7 +569,9 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
-    // Verifies that a binary trailer arriving in the same CopyData payload as the last row is still parsed.
+    // Verifies row-boundary handling when the last row and the standard Int16 -1 binary trailer share
+    // a CopyData payload. The header also carries the encoding extension so this covers the combined
+    // alignment path seen in GaussDB-compatible servers.
     public async Task Exporter_reads_trailer_from_same_copy_data_message()
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
@@ -639,8 +643,9 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     }
 
     [Test]
-    // Real end-to-end regression on GaussDB: roundtrip binary import/export with multiple rows,
-    // null handling, bytea data, and a stable export order.
+    // Real end-to-end compatibility coverage on GaussDB rather than PgServerMock. This validates that
+    // the driver can import and then export multiple rows across normal values, nulls, bytea payloads,
+    // and a large text value while preserving a stable export order.
     public async Task Binary_roundtrip_no_oids_real_compatibility()
     {
         await using var conn = await OpenConnectionAsync();
@@ -1545,6 +1550,9 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
 
     #region Utils
 
+    // Builds a binary COPY header without rows. extensionPayload represents the protocol header extension
+    // area after extLen; for file_has_encoding this is the 2-byte file encoding marker, but tests keep it
+    // opaque because the driver only needs to preserve stream alignment.
     static byte[] BuildHeaderOnlyPayload(int flags, byte[] extensionPayload)
     {
         var payload = new List<byte>(GaussDBRawCopyStream.BinarySignature.Length + 8 + extensionPayload.Length);
@@ -1555,6 +1563,8 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         return payload.ToArray();
     }
 
+    // Builds a header followed by a single row. This lets mock-server tests place a GaussDB encoding
+    // extension before real row data and assert that the first typed read is not shifted by those bytes.
     static byte[] BuildHeaderAndSingleRowPayload(int flags, byte[] extensionPayload, byte[][] rowFields)
     {
         var payload = new List<byte>(GaussDBRawCopyStream.BinarySignature.Length + 8 + extensionPayload.Length + 128);
